@@ -123,9 +123,70 @@ def _find_template():
     return None
 
 
+def _find_view_edge(view, expected_length, direction, tol=0.1):
+    """Gibt den 0-basierten Index eines Edges in der Ansicht zurueck,
+    der die gewuenschte Laenge und Richtung hat. direction='X' fuer
+    horizontal, 'Y' fuer vertikal."""
+    i = 0
+    while i < 200:
+        try:
+            e = view.getEdgeByIndex(i)
+        except Exception:
+            return None
+        if e is None:
+            return None
+        v1 = e.firstVertex()
+        v2 = e.lastVertex()
+        dx = v2.X - v1.X
+        dy = v2.Y - v1.Y
+        length = (dx * dx + dy * dy) ** 0.5
+        is_horiz = abs(dx) > 10 * abs(dy)
+        is_vert = abs(dy) > 10 * abs(dx)
+        if abs(length - expected_length) < tol:
+            if direction == "X" and is_horiz:
+                return i
+            if direction == "Y" and is_vert:
+                return i
+        i += 1
+    return None
+
+
+def _add_linear_dim(doc, page, view, edge_idx, dim_type, name):
+    dim = doc.addObject("TechDraw::DrawViewDimension", name)
+    dim.Type = dim_type
+    dim.References2D = [(view, "Edge{}".format(edge_idx))]
+    page.addView(dim)
+    return dim
+
+
+def _add_dims_for_part(doc, page, group, length, width, front_h, prefix):
+    """Bemasst Laenge und Breite in der Draufsicht, Hoehe in der Frontansicht.
+    Rueckgabe: Anzahl erfolgreicher Bemassungen."""
+    views = {getattr(v, "Type", ""): v for v in group.Views}
+    added = 0
+    if "Top" in views:
+        top = views["Top"]
+        i_len = _find_view_edge(top, length, "X")
+        if i_len is not None:
+            _add_linear_dim(doc, page, top, i_len, "DistanceX", prefix + "_L")
+            added += 1
+        i_wid = _find_view_edge(top, width, "Y")
+        if i_wid is not None:
+            _add_linear_dim(doc, page, top, i_wid, "DistanceY", prefix + "_W")
+            added += 1
+    if "Front" in views:
+        front = views["Front"]
+        i_h = _find_view_edge(front, front_h, "Y")
+        if i_h is not None:
+            _add_linear_dim(doc, page, front, i_h, "DistanceY", prefix + "_H")
+            added += 1
+    return added
+
+
 def build_drawings(doc, parts):
-    """Erzeugt fuer jedes (obj, label)-Paar eine TechDraw-Seite mit
-    Front/Draufsicht/Seitenansicht + Iso. First-Angle-Projektion."""
+    """parts: Liste von (obj, label, length, width, front_height)-Tupeln.
+    Erzeugt je eine TechDraw-Seite mit Front/Draufsicht/Seite + Iso und
+    Bemassungen (L, B in Draufsicht; H in Front). First-Angle-Projektion."""
     try:
         import TechDraw  # noqa: F401
     except ImportError:
@@ -135,7 +196,7 @@ def build_drawings(doc, parts):
     template_path = _find_template()
     pages = []
 
-    for obj, label in parts:
+    for obj, label, length, width, front_h in parts:
         name = obj.Name + "_Page"
         page = doc.addObject("TechDraw::DrawPage", name)
         page.Label = "Zeichnung " + label
@@ -155,6 +216,10 @@ def build_drawings(doc, parts):
         group.addProjection("Right")
         group.addProjection("FrontTopRight")
 
+        # Views muessen berechnet sein, bevor Edges referenziert werden koennen
+        doc.recompute()
+
+        _add_dims_for_part(doc, page, group, length, width, front_h, obj.Name)
         pages.append(page)
 
     doc.recompute()
@@ -196,7 +261,10 @@ def create_box(length, width, height,
     doc.recompute()
 
     if with_drawings:
-        build_drawings(doc, [(base_obj, "Grundkoerper"), (lid_obj, "Deckel")])
+        build_drawings(doc, [
+            (base_obj, "Grundkoerper", length, width, height - lid_h),
+            (lid_obj,  "Deckel",       length, width, lid_h),
+        ])
 
     try:
         import FreeCADGui as Gui
