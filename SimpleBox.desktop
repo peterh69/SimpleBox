@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SimpleBox
+Comment=Elektronikgehaeuse fuer FreeCAD erzeugen
+Exec=/usr/bin/env python3 /home/peter/Documents/Programmierung/Python/Freecad/SimpeBox/simplebox_gui.py
+Icon=/snap/freecad/current/usr/share/icons/hicolor/scalable/apps/org.freecad.FreeCAD.svg
+Terminal=false
+Categories=Graphics;Engineering;
+StartupNotify=true

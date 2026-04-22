@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+.simplebox_run.FCMacro
+*.FCStd
+*.FCStd1
+*.FCBak
+.claude/
