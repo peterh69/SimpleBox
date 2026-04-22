@@ -6,3 +6,6 @@ __pycache__/
 *.FCStd1
 *.FCBak
 .claude/
+Github_Token.txt
+*.token
+
