@@ -1,0 +1,4 @@
+# SimpleBox hat keine pip-Abhaengigkeiten.
+# tkinter ist Teil der Python-Standardbibliothek (auf Linux: python3-tk).
+# FreeCAD wird nicht ueber pip installiert, sondern systemweit
+# (Snap / AppImage / Distro-Paket).

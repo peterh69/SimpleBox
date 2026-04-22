@@ -23,12 +23,20 @@ parametrisch erzeugt.
 ## Nutzung
 
 ```bash
+./Box.sh
+```
+
+`Box.sh` legt beim ersten Aufruf ein `.venv` an, prueft `tkinter`
+und startet dann die GUI. Werte eintragen, **FreeCAD starten** klicken.
+
+Alternativ direkt:
+
+```bash
 python3 simplebox_gui.py
 ```
 
-Werte eintragen, **FreeCAD starten** klicken. Die GUI erzeugt eine
-temporaere FCMacro-Datei (neben dem Script, da Snap-FreeCAD keinen
-Zugriff auf `/tmp` hat) und startet FreeCAD damit.
+Die GUI erzeugt eine temporaere FCMacro-Datei (neben dem Script,
+da Snap-FreeCAD keinen Zugriff auf `/tmp` hat) und startet FreeCAD damit.
 
 ### Starter installieren (optional)
 
@@ -36,9 +44,20 @@ Zugriff auf `/tmp` hat) und startet FreeCAD damit.
 cp SimpleBox.desktop ~/.local/share/applications/
 ```
 
-Danach erscheint **SimpleBox** im Anwendungsmenue.
+Danach erscheint **SimpleBox** im Anwendungsmenue. Falls das Projekt
+nicht unter dem hart kodierten Pfad liegt, die `Exec=`-Zeile in
+`SimpleBox.desktop` auf den eigenen `Box.sh`-Pfad anpassen.
 
 ## Abhaengigkeiten
 
-- Python 3 mit Tkinter
+- Python 3 mit Tkinter (Linux: `python3-tk`)
 - FreeCAD (getestet mit 1.1 aus dem Snap)
+- Keine pip-Pakete noetig (`requirements.txt` ist leer)
+
+## Auf anderem Rechner einrichten
+
+```bash
+git clone https://github.com/peterh69/SimpleBox.git
+cd SimpleBox
+./Box.sh
+```
