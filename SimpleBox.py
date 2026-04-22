@@ -9,6 +9,7 @@ Wird aus FreeCAD heraus via exec() geladen und anschliessend mit
 create_box(laenge, breite, hoehe, ...) aufgerufen.
 """
 
+import os
 import FreeCAD as App
 import Part
 
@@ -107,11 +108,65 @@ def build_lid(length, width, wall, lid_h, lip_h, clearance,
     return lid.removeSplitter()
 
 
+def _find_template():
+    """Sucht eine passende A4-Landscape-Vorlage; First-Angle (ISO) bevorzugt."""
+    candidates = [
+        "Mod/TechDraw/Templates/ISO/A4_Landscape_ISO5457_minimal.svg",
+        "Mod/TechDraw/Templates/ISO/A4_Landscape_blank.svg",
+        "Mod/TechDraw/Templates/A4_Landscape_TD.svg",
+        "Mod/TechDraw/Templates/Default_Template_A4_Landscape.svg",
+    ]
+    for rel in candidates:
+        path = os.path.join(App.getResourceDir(), rel)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def build_drawings(doc, parts):
+    """Erzeugt fuer jedes (obj, label)-Paar eine TechDraw-Seite mit
+    Front/Draufsicht/Seitenansicht + Iso. First-Angle-Projektion."""
+    try:
+        import TechDraw  # noqa: F401
+    except ImportError:
+        App.Console.PrintWarning("TechDraw nicht verfuegbar, keine Zeichnungen erzeugt.\n")
+        return []
+
+    template_path = _find_template()
+    pages = []
+
+    for obj, label in parts:
+        name = obj.Name + "_Page"
+        page = doc.addObject("TechDraw::DrawPage", name)
+        page.Label = "Zeichnung " + label
+
+        if template_path:
+            tpl = doc.addObject("TechDraw::DrawSVGTemplate", name + "_Template")
+            tpl.Template = template_path
+            page.Template = tpl
+
+        group = doc.addObject("TechDraw::DrawProjGroup", name + "_Group")
+        page.addView(group)
+        group.Source = [obj]
+        group.ProjectionType = "First angle"
+        group.ScaleType = "Automatic"
+        group.Anchor = group.addProjection("Front")
+        group.addProjection("Top")
+        group.addProjection("Right")
+        group.addProjection("FrontTopRight")
+
+        pages.append(page)
+
+    doc.recompute()
+    return pages
+
+
 def create_box(length, width, height,
                wall=WALL_THICKNESS, lid_h=LID_HEIGHT,
                lip_h=LIP_HEIGHT, clearance=LIP_CLEARANCE,
                post_d=POST_DIAMETER, screw_d=SCREW_DIAMETER,
-               post_gap=POST_GAP, explode=EXPLODE_GAP):
+               post_gap=POST_GAP, explode=EXPLODE_GAP,
+               with_drawings=True):
     min_xy = 2 * (2 * wall + clearance + post_d + post_gap)
     if length < min_xy or width < min_xy:
         raise ValueError(
@@ -139,6 +194,9 @@ def create_box(length, width, height,
     lid_obj.Shape = lid_shape
 
     doc.recompute()
+
+    if with_drawings:
+        build_drawings(doc, [(base_obj, "Grundkoerper"), (lid_obj, "Deckel")])
 
     try:
         import FreeCADGui as Gui
